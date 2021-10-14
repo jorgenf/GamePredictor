@@ -99,11 +99,13 @@ def plot_correlation(feature1, feature2, dataset):
     s = [0.5*data[(xx,yy)] for xx,yy in zip(f1,f2)]
     plt.title("Feature correlation")
     plt.scatter(f1, f2, c=s, cmap="Reds")
-    #plt.xticks(range(min(f1),max(f1) + 1))
-    #plt.yticks(range(min(f2), max(f2) + 1))
+    plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)))
+    plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)))
+
     plt.xlabel(feature1)
     plt.ylabel(feature2)
     plt.savefig(f"../Plots/FeatureCorrelations/{feature1}{feature2}")
+    plt.clf()
 
 
 def plot_histogram():
@@ -112,5 +114,5 @@ def plot_histogram():
 df = pd.read_csv("../data/player_data.csv")
 
 for f1 in df.keys()[4:]:
-    for f2 in df.keys()[4:]:
+    for f2 in df.keys()[5:]:
         plot_correlation(f1, f2, "../data/player_data.csv")
