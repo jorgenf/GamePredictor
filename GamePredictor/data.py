@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from collections import Counter
 sns.set()
 
 N_PLAYER_THRESHOLD = 8
@@ -90,4 +91,26 @@ def get_stats(data):
     return stats
 
 
-print(get_stats("data/player_data.csv"))
+def plot_correlation(feature1, feature2, dataset):
+    df = pd.read_csv(dataset)
+    f1 = df[feature1].tolist()
+    f2 = df[feature2].tolist()
+    data = Counter(zip(f1,f2))
+    s = [0.5*data[(xx,yy)] for xx,yy in zip(f1,f2)]
+    plt.title("Feature correlation")
+    plt.scatter(f1, f2, c=s, cmap="Reds")
+    #plt.xticks(range(min(f1),max(f1) + 1))
+    #plt.yticks(range(min(f2), max(f2) + 1))
+    plt.xlabel(feature1)
+    plt.ylabel(feature2)
+    plt.savefig(f"../Plots/FeatureCorrelations/{feature1}{feature2}")
+
+
+def plot_histogram():
+    pass
+
+df = pd.read_csv("../data/player_data.csv")
+
+for f1 in df.keys()[4:]:
+    for f2 in df.keys()[4:]:
+        plot_correlation(f1, f2, "../data/player_data.csv")

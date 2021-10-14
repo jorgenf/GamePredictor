@@ -1,12 +1,9 @@
-import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
 import pandas as pd
-import data
 import numpy as np
 
 
-df = pd.read_csv("data/combined.csv")
+df = pd.read_csv("../data/combined.csv")
 y = []
 x = []
 for i,s in df.iterrows():
