@@ -103,7 +103,7 @@ while True:
 print(data)
 driver.quit()
 
-file = open("data/fd_gd_dup.csv", "w", encoding="utf-8", newline="")
+file = open("../data/misc/fd_gd_dup.csv", "w", encoding="utf-8", newline="")
 writer = csv.writer(file)
 writer.writerow(HEADERS)
 for row in data:

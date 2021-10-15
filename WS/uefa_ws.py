@@ -84,10 +84,10 @@ while True:
 
 driver.quit()
 comp_s = ",".join(comps)
-with open("data/comps.txt", "w", encoding="utf-8") as f:
+with open("../data/misc/comps.txt", "w", encoding="utf-8") as f:
     f.write(comp_s)
 
-file = open("data/uefa_gd_2015-2018.csv", "w", encoding="utf-8", newline="")
+file = open("../data/uefa_gd_2015-2018.csv", "w", encoding="utf-8", newline="")
 writer = csv.writer(file)
 writer.writerow(HEADERS)
 for row in data:
