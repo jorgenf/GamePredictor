@@ -1,12 +1,18 @@
+import itertools
+
 from matplotlib import pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
 from collections import Counter
+from multiprocessing import Pool
+import os
+
 sns.set()
 
-N_PLAYER_THRESHOLD = 8
 
+
+N_PLAYER_THRESHOLD = 8
 
 
 def combine_data(g="data_clean.csv", p="player_data.csv", npth = N_PLAYER_THRESHOLD, years=[]):
@@ -84,10 +90,10 @@ def get_stats(data):
         else:
             col = df[key]
         if type(col[0]) in [np.int, np.float, np.int64]:
-            stats[f"{key}"] = {"std": round(np.std(col),2), "mean": round(np.mean(col),2), "maks": np.max(col), "min": np.min(col)}
+            stats[f"{key}"] = {"maks": np.max(col), "min": np.min(col),  "mean": round(np.mean(col),2), "std": round(np.std(col),2)}
             plt.hist(col, bins=np.arange(col.min(), col.max()+1))
             plt.title(f"{key}")
-            plt.show()
+            #plt.show()
     return stats
 
 
@@ -95,10 +101,22 @@ def plot_correlation(feature1, feature2, dataset):
     df = pd.read_csv(dataset)
     f1 = df[feature1].tolist()
     f2 = df[feature2].tolist()
+    if df[feature1].dtype == object or df[feature2].dtype == object:
+        return None
     data = Counter(zip(f1,f2))
     s = [0.5*data[(xx,yy)] for xx,yy in zip(f1,f2)]
     plt.title("Feature correlation")
-    plt.scatter(f1, f2, c=s, cmap="Reds")
+    try:
+        plt.scatter(f1, f2, c=s, cmap="Reds")
+    except Exception:
+        print("F1:")
+        print(f1)
+        print("F2:")
+        print(f2)
+        print("S:")
+        print(s)
+        raise Exception("Oh no!")
+
     plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)))
     plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)))
 
@@ -108,11 +126,48 @@ def plot_correlation(feature1, feature2, dataset):
     plt.clf()
 
 
-def plot_histogram():
-    pass
+def plot_histogram(feature, dataset):
+    df = pd.read_csv(dataset)
+    f = df[feature]
+    if f.dtype == object:
+        return None
+    count = Counter(f)
+    srt = sorted(count.items(), key=lambda x: x[0])
+    plt.bar(x=[x[0] for x in srt], height=[x[1] for x in srt])
+    plt.xticks(range(min(f),max(f)+1, max(int(max(f)/20),1)))
+    plt.ylabel("Count")
+    plt.xlabel("Feature value")
+    plt.title(feature)
+    plt.savefig(f"../Plots/Histograms/{feature}")
+    plt.clf()
 
-df = pd.read_csv("../data/player_data.csv")
 
-for f1 in df.keys()[4:]:
-    for f2 in df.keys()[5:]:
-        plot_correlation(f1, f2, "../data/player_data.csv")
+def run_mt_plots():
+    if __name__ == "__main__":
+        dataset = "../data/player_data.csv"
+        df = pd.read_csv(dataset)
+        hist_data = []
+        corr_data = []
+        for f1 in df.keys()[4:]:
+            hist_data.append((f1, dataset))
+            for f2 in df.keys()[5:]:
+                corr_data.append((f1,f2,dataset))
+        with Pool(os.cpu_count() - 1) as p:
+            p.starmap(plot_histogram, hist_data)
+            p.starmap(plot_correlation, corr_data)
+            p.close()
+
+
+def get_correlations():
+    df = pd.read_csv("../data/player_data.csv")
+    keys = df.keys()[4:]
+    keys = keys.drop('PositionsDesc')
+    comb = list(itertools.product(keys,keys))
+    comb = [(x[0],x[1]) for x in comb if x[0] != x[1]]
+    l = {}
+    for c in comb:
+        l[f"{c[0]}-{c[1]}"] = np.corrcoef(df[c[0]], df[c[1]])[0][1]
+    print(sorted(l.items(), key = lambda kv:(kv[1], kv[0])))
+
+
+get_correlations()

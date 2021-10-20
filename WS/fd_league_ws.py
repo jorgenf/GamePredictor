@@ -37,7 +37,7 @@ premier_league = "https://www.footballdatabase.eu/en/competition/overall/14896-p
 leagues = [la_liga, serie_a, bundesliga, premier_league]
 #, la_liga, serie_a, bundesliga, premier_league
 logged_in = False
-file = open("../data/fd_gd.csv", "a", encoding="utf-8", newline="")
+file = open("../data/misc/fd_gd.csv", "a", encoding="utf-8", newline="")
 writer = csv.writer(file)
 #writer.writerow(HEADERS)
 for league in leagues:
