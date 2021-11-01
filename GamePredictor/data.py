@@ -1,5 +1,4 @@
 import itertools
-
 from matplotlib import pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -7,15 +6,20 @@ import numpy as np
 from collections import Counter
 from multiprocessing import Pool
 import os
+#import datawig
+import unicodedata
 
 sns.set()
+plt.rcParams["figure.figsize"] = (10,6)
 
 
+FONT = 20
+TITLE_FONT = 25
 
 N_PLAYER_THRESHOLD = 8
+data_path = "C:/Users/jorge/PycharmProjects/WebScraper/data/"
 
-
-def combine_data(g="data_clean.csv", p="player_data.csv", npth = N_PLAYER_THRESHOLD, years=[]):
+def combine_data(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", npth = N_PLAYER_THRESHOLD, years=[]):
     games = pd.read_csv(g, index_col=False)
     gk = games.keys().values
     if years:
@@ -41,7 +45,9 @@ def combine_data(g="data_clean.csv", p="player_data.csv", npth = N_PLAYER_THRESH
         a_avg = np.zeros(len(pk))
         an = 0
         for hp,ap in zip(h_t,a_t):
-            hplayer = get_player(hp,players)
+            hp = hp.lstrip()
+            ap = ap.lstrip()
+            hplayer = get_player(hp, players)
             if len(hplayer) == 0:
                 p_not_found.add(hp)
             else:
@@ -49,7 +55,7 @@ def combine_data(g="data_clean.csv", p="player_data.csv", npth = N_PLAYER_THRESH
                 h_avg += hatt
                 hn += 1
                 p_found.add(hp)
-            aplayer = get_player(ap,players)
+            aplayer = get_player(ap, players)
             if len(aplayer) == 0:
                 p_not_found.add(ap)
             else:
@@ -105,7 +111,7 @@ def plot_correlation(feature1, feature2, dataset):
         return None
     data = Counter(zip(f1,f2))
     s = [0.5*data[(xx,yy)] for xx,yy in zip(f1,f2)]
-    plt.title("Feature correlation")
+    plt.title("Feature correlation", fontsize=TITLE_FONT)
     try:
         plt.scatter(f1, f2, c=s, cmap="Reds")
     except Exception:
@@ -117,13 +123,15 @@ def plot_correlation(feature1, feature2, dataset):
         print(s)
         raise Exception("Oh no!")
 
-    plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)))
-    plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)))
+    plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)), fontsize=FONT)
+    plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)), fontsize=FONT)
 
-    plt.xlabel(feature1)
-    plt.ylabel(feature2)
+    plt.xlabel(feature1, fontsize=FONT)
+    plt.ylabel(feature2, fontsize=FONT)
     plt.savefig(f"../Plots/FeatureCorrelations/{feature1}{feature2}")
     plt.clf()
+
+
 
 
 def plot_histogram(feature, dataset):
@@ -133,11 +141,15 @@ def plot_histogram(feature, dataset):
         return None
     count = Counter(f)
     srt = sorted(count.items(), key=lambda x: x[0])
-    plt.bar(x=[x[0] for x in srt], height=[x[1] for x in srt])
-    plt.xticks(range(min(f),max(f)+1, max(int(max(f)/20),1)))
-    plt.ylabel("Count")
-    plt.xlabel("Feature value")
-    plt.title(feature)
+    feature_val = [x[0] for x in srt]
+    feature_occurance = [x[1] for x in srt]
+    plt.bar(x=feature_val, height=feature_occurance)
+    plt.xticks(range(min(f),max(f)+1, max(int(max(f)/20),1)), fontsize=FONT)
+    plt.yticks(fontsize=FONT)
+    plt.ylabel("Count", fontsize=FONT)
+    plt.xlabel("Feature value", fontsize=FONT)
+    plt.title(feature, fontsize=TITLE_FONT)
+
     plt.savefig(f"../Plots/Histograms/{feature}")
     plt.clf()
 
@@ -162,12 +174,18 @@ def get_correlations():
     df = pd.read_csv("../data/player_data.csv")
     keys = df.keys()[4:]
     keys = keys.drop('PositionsDesc')
-    comb = list(itertools.product(keys,keys))
+    comb = list(itertools.combinations(keys, 2))
     comb = [(x[0],x[1]) for x in comb if x[0] != x[1]]
     l = {}
     for c in comb:
         l[f"{c[0]}-{c[1]}"] = np.corrcoef(df[c[0]], df[c[1]])[0][1]
     print(sorted(l.items(), key = lambda kv:(kv[1], kv[0])))
+    print(f"Mean correlation values: {sum(l.values())/len(l.values())}")
+    print(f"Mean of positive correlations: {np.mean([x for x in l.values() if x >= 0])}")
+    print(f"STD of positive correlations: {np.std([x for x in l.values() if x >= 0])}")
+    print(f"Mean of negative correlations: {np.mean([x for x in l.values() if x <= 0])}")
+    print(f"STD of negative correlations: {np.std([x for x in l.values() if x <= 0])}")
+    print(f"Standard deviation: {np.std(list(l.values()))}")
 
 
-get_correlations()
+run_mt_plots()
