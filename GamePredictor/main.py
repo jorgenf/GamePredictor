@@ -5,7 +5,15 @@ import unicodedata
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
+import itertools
 sns.set()
+
+
+df = pd.read_csv("../data/combined_full.csv")
+
+for keys in df.keys():
+    if len(df[keys]) != 2236:
+        print(keys)
 
 '''
 s = "Bøjan-Letić"
@@ -22,7 +30,7 @@ df = pd.read_csv("C:/Users/jorge/PycharmProjects/WebScraper/data/game_data.csv",
 df["home_lineup"] = df["home_lineup"].apply(lambda x : unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode("utf-8"))
 df["away_lineup"] = df["away_lineup"].apply(lambda x : unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode("utf-8"))
 
-'''
+
 
 matches_kept = [99.5, 98.3, 97, 96, 94.3, 92.5, 90.5,86.0,75.3, 53.4, 16.9]
 threshold = [1,2,3,4,5,6,7,8,9,10,11]
@@ -34,3 +42,5 @@ plt.xlabel("Player threshold", fontsize=30)
 plt.ylabel("Matches kept (%)", fontsize=30)
 plt.title("Retained matches", fontsize=35)
 plt.show()
+
+'''

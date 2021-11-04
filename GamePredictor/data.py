@@ -20,7 +20,7 @@ plt.rc('figure', titlesize=14)
 plt.rcParams['figure.figsize'] = (15*cm, 8*cm)
 
 N_PLAYER_THRESHOLD = 8
-data_path = "C:/Users/jorge/PycharmProjects/WebScraper/data/"
+data_path = "../data/"
 
 def combine_data_avg(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", npth = N_PLAYER_THRESHOLD, years=[]):
     games = pd.read_csv(g, index_col=False)
@@ -104,50 +104,52 @@ def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player
     n_games = len(games)
 
     games_copy = games.copy(deep=True)
-
+    new_columns = {}
+    for team in ["H", "A"]:
+        for player in range(1, 12):
+            for attribute in pk:
+                new_columns[f"{attribute}{team}{player}"] = []
     print(f"Total number of games: {n_games}")
     for i,s in games_copy.iterrows():
         prog = (i / n_games) * 100
         print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if i < n_games - 1 else 100}%| Game: {i}", end="")
         h_t = s["home_lineup"].split(",")
         a_t = s["away_lineup"].split(",")
-        ht_att = []
-        at_att = []
-        data = {}
-        for team in ["H", "A"]:
-            for player in range(1,12):
-                for attribute in pk:
-                    print(f"{attribute}{team}{player}")
-                    '''
-        #add values all skills as individual columns using dict
-        for hp,ap in zip(h_t,a_t):
+
+
+        for hp,ap, i in zip(h_t,a_t,range(1,12)):
             hp = hp.lstrip()
             ap = ap.lstrip()
             hplayer = get_player(hp, players)
             if len(hplayer) == 0:
                 p_not_found.add(hp)
-                ht_att.append([np.nan for _ in range(len(pk))])
+                for key in pk:
+                    new_columns[f"{key}H{i}"].append(np.nan)
             else:
                 hp_att = hplayer[pk].values[0]
-                ht_att.append(list(hp_att))
                 p_found.add(hp)
+                for attribute, key in zip(hp_att, pk):
+                    new_columns[f"{key}H{i}"].append(attribute)
             aplayer = get_player(ap, players)
             if len(aplayer) == 0:
                 p_not_found.add(ap)
-                at_att.append([np.nan for _ in range(len(pk))])
+                for key in pk:
+                    new_columns[f"{key}A{i}"].append(np.nan)
             else:
                 ap_att = aplayer[pk].values[0]
-                at_att.append(list(ap_att))
+                for attribute, key in zip(ap_att, pk):
+                    new_columns[f"{key}A{i}"].append(attribute)
                 p_found.add(ap)
 
-            games_copy.at[i,"home_lineup"] = ht_att
-            games_copy.at[i,"away_lineup"] = at_att
+    for key in new_columns.keys():
+        games_copy[key] = new_columns[key]
+
     games_copy = games_copy.reset_index(drop=True)
     print(f"\nPlayers found: {len(p_found)}")
     print(f"Players not found: {len(p_not_found)}")
     print(f"Percentage players found: {round(len(p_found)/(len(p_found)+len(p_not_found))*100,1)}%")
     return games_copy
-'''
+
 
 def get_player(name, df):
     return df.loc[df["Name"] == name]
@@ -255,5 +257,5 @@ def get_correlations():
 
 
 combined_full = combine_data_full()
-
-combined_full.to_csv("../data/combined_full.csv")
+combined_full.drop(labels=[])
+combined_full.to_csv("../data/combined_full.csv", na_rep='NULL', index=False)
