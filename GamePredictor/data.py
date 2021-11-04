@@ -6,20 +6,23 @@ import numpy as np
 from collections import Counter
 from multiprocessing import Pool
 import os
-#import datawig
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
 import unicodedata
 
 sns.set()
-plt.rcParams["figure.figsize"] = (10,6)
-
-
-FONT = 20
-TITLE_FONT = 25
+cm = 1/2.54
+plt.rc('axes', titlesize=10)
+plt.rc('axes', labelsize=10)
+plt.rc('xtick', labelsize=8)
+plt.rc('ytick', labelsize=8)
+plt.rc('figure', titlesize=14)
+plt.rcParams['figure.figsize'] = (15*cm, 8*cm)
 
 N_PLAYER_THRESHOLD = 8
 data_path = "C:/Users/jorge/PycharmProjects/WebScraper/data/"
 
-def combine_data(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", npth = N_PLAYER_THRESHOLD, years=[]):
+def combine_data_avg(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", npth = N_PLAYER_THRESHOLD, years=[]):
     games = pd.read_csv(g, index_col=False)
     gk = games.keys().values
     if years:
@@ -82,6 +85,70 @@ def combine_data(g=data_path + "game_data_ascii.csv", p=data_path + "player_data
     print(f"Matches kept: {round(len(games)/(len(games)+dropped)*100,1)}%")
     return games
 
+
+def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", years=[]):
+    games = pd.read_csv(g, index_col=False)
+    gk = games.keys().values
+    if years:
+        g = pd.DataFrame(columns=gk)
+        for year in years:
+            g = g.append(games[(games["date"].str.contains(year))])
+        games = g
+        games = games.reset_index(drop=True)
+    players = pd.read_csv(p)
+    pk = players.keys()[4:-16].values
+
+
+    p_found = set()
+    p_not_found = set()
+    n_games = len(games)
+
+    games_copy = games.copy(deep=True)
+
+    print(f"Total number of games: {n_games}")
+    for i,s in games_copy.iterrows():
+        prog = (i / n_games) * 100
+        print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if i < n_games - 1 else 100}%| Game: {i}", end="")
+        h_t = s["home_lineup"].split(",")
+        a_t = s["away_lineup"].split(",")
+        ht_att = []
+        at_att = []
+        data = {}
+        for team in ["H", "A"]:
+            for player in range(1,12):
+                for attribute in pk:
+                    print(f"{attribute}{team}{player}")
+                    '''
+        #add values all skills as individual columns using dict
+        for hp,ap in zip(h_t,a_t):
+            hp = hp.lstrip()
+            ap = ap.lstrip()
+            hplayer = get_player(hp, players)
+            if len(hplayer) == 0:
+                p_not_found.add(hp)
+                ht_att.append([np.nan for _ in range(len(pk))])
+            else:
+                hp_att = hplayer[pk].values[0]
+                ht_att.append(list(hp_att))
+                p_found.add(hp)
+            aplayer = get_player(ap, players)
+            if len(aplayer) == 0:
+                p_not_found.add(ap)
+                at_att.append([np.nan for _ in range(len(pk))])
+            else:
+                ap_att = aplayer[pk].values[0]
+                at_att.append(list(ap_att))
+                p_found.add(ap)
+
+            games_copy.at[i,"home_lineup"] = ht_att
+            games_copy.at[i,"away_lineup"] = at_att
+    games_copy = games_copy.reset_index(drop=True)
+    print(f"\nPlayers found: {len(p_found)}")
+    print(f"Players not found: {len(p_not_found)}")
+    print(f"Percentage players found: {round(len(p_found)/(len(p_found)+len(p_not_found))*100,1)}%")
+    return games_copy
+'''
+
 def get_player(name, df):
     return df.loc[df["Name"] == name]
 
@@ -111,7 +178,7 @@ def plot_correlation(feature1, feature2, dataset):
         return None
     data = Counter(zip(f1,f2))
     s = [0.5*data[(xx,yy)] for xx,yy in zip(f1,f2)]
-    plt.title("Feature correlation", fontsize=TITLE_FONT)
+    plt.title("Feature correlation")
     try:
         plt.scatter(f1, f2, c=s, cmap="Reds")
     except Exception:
@@ -123,11 +190,11 @@ def plot_correlation(feature1, feature2, dataset):
         print(s)
         raise Exception("Oh no!")
 
-    plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)), fontsize=FONT)
-    plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)), fontsize=FONT)
+    plt.xticks(range(min(f1),max(f1) + 1, max(int(max(f1)/20),1)))
+    plt.yticks(range(min(f2), max(f2) + 1, max(int(max(f2)/20),1)))
 
-    plt.xlabel(feature1, fontsize=FONT)
-    plt.ylabel(feature2, fontsize=FONT)
+    plt.xlabel(feature1)
+    plt.ylabel(feature2)
     plt.savefig(f"../Plots/FeatureCorrelations/{feature1}{feature2}")
     plt.clf()
 
@@ -144,11 +211,10 @@ def plot_histogram(feature, dataset):
     feature_val = [x[0] for x in srt]
     feature_occurance = [x[1] for x in srt]
     plt.bar(x=feature_val, height=feature_occurance)
-    plt.xticks(range(min(f),max(f)+1, max(int(max(f)/20),1)), fontsize=FONT)
-    plt.yticks(fontsize=FONT)
-    plt.ylabel("Count", fontsize=FONT)
-    plt.xlabel("Feature value", fontsize=FONT)
-    plt.title(feature, fontsize=TITLE_FONT)
+    plt.xticks(range(min(f),max(f)+1, max(int(max(f)/20),1)))
+    plt.ylabel("Count")
+    plt.xlabel("Feature value")
+    plt.title(feature)
 
     plt.savefig(f"../Plots/Histograms/{feature}")
     plt.clf()
@@ -188,4 +254,6 @@ def get_correlations():
     print(f"Standard deviation: {np.std(list(l.values()))}")
 
 
-run_mt_plots()
+combined_full = combine_data_full()
+
+combined_full.to_csv("../data/combined_full.csv")
