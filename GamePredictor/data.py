@@ -7,7 +7,7 @@ from collections import Counter
 from multiprocessing import Pool
 import os
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
+from sklearn.impute import IterativeImputer, SimpleImputer
 import unicodedata
 
 sns.set()
@@ -28,7 +28,7 @@ def combine_data_avg(g=data_path + "game_data_ascii.csv", p=data_path + "player_
     if years:
         g = pd.DataFrame(columns=gk)
         for year in years:
-            g = g.append(games[(games["date"].str.contains(year))])
+            g = g.append(games[(games["date"].str.contains(str(year)))])
         games = g
         games = games.reset_index(drop=True)
     players = pd.read_csv(p)
@@ -86,68 +86,78 @@ def combine_data_avg(g=data_path + "game_data_ascii.csv", p=data_path + "player_
     return games
 
 
-def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", years=[]):
+def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player_data_ascii.csv", npth = N_PLAYER_THRESHOLD, years=[]):
     games = pd.read_csv(g, index_col=False)
     gk = games.keys().values
     if years:
         g = pd.DataFrame(columns=gk)
         for year in years:
-            g = g.append(games[(games["date"].str.contains(year))])
+            g = g.append(games[(games["date"].str.contains(str(year)))])
         games = g
         games = games.reset_index(drop=True)
     players = pd.read_csv(p)
     pk = players.keys()[4:-16].values
 
 
+
     p_found = set()
     p_not_found = set()
     n_games = len(games)
+    dropped = 0
 
     games_copy = games.copy(deep=True)
-    new_columns = {}
+    #new_columns = {}
     for team in ["H", "A"]:
         for player in range(1, 12):
             for attribute in pk:
-                new_columns[f"{attribute}{team}{player}"] = []
+                games_copy[f"{attribute}{team}{player}"] = np.nan
     print(f"Total number of games: {n_games}")
     for i,s in games_copy.iterrows():
         prog = (i / n_games) * 100
         print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if i < n_games - 1 else 100}%| Game: {i}", end="")
         h_t = s["home_lineup"].split(",")
         a_t = s["away_lineup"].split(",")
-
-
-        for hp,ap, i in zip(h_t,a_t,range(1,12)):
+        an = 0
+        hn = 0
+        for hp,ap, j in zip(h_t,a_t,range(1,12)):
             hp = hp.lstrip()
             ap = ap.lstrip()
             hplayer = get_player(hp, players)
             if len(hplayer) == 0:
                 p_not_found.add(hp)
-                for key in pk:
-                    new_columns[f"{key}H{i}"].append(np.nan)
+                #for key in pk:
+                 #   games_copy[f"{key}H{j}"].append(np.nan)
             else:
                 hp_att = hplayer[pk].values[0]
                 p_found.add(hp)
+                hn += 1
                 for attribute, key in zip(hp_att, pk):
-                    new_columns[f"{key}H{i}"].append(attribute)
+                    games_copy.at[i, f"{key}H{j}"] = attribute
             aplayer = get_player(ap, players)
             if len(aplayer) == 0:
                 p_not_found.add(ap)
-                for key in pk:
-                    new_columns[f"{key}A{i}"].append(np.nan)
+                #for key in pk:
+                 #   games_copy[f"{key}A{j}"].append(np.nan)
             else:
                 ap_att = aplayer[pk].values[0]
-                for attribute, key in zip(ap_att, pk):
-                    new_columns[f"{key}A{i}"].append(attribute)
                 p_found.add(ap)
+                an += 1
+                for attribute, key in zip(ap_att, pk):
+                    games_copy.at[i, f"{key}A{j}"] = attribute
+        if hn < npth or an < npth:
+            games_copy = games_copy.drop(index=i)
+            dropped += 1
 
-    for key in new_columns.keys():
-        games_copy[key] = new_columns[key]
+    #for key in new_columns.keys():
+     #   games_copy[key] = new_columns[key]
 
     games_copy = games_copy.reset_index(drop=True)
     print(f"\nPlayers found: {len(p_found)}")
     print(f"Players not found: {len(p_not_found)}")
     print(f"Percentage players found: {round(len(p_found)/(len(p_found)+len(p_not_found))*100,1)}%")
+    print(f"Matches dropped: {dropped}")
+    print(f"Matches kept: {len(games)}")
+    print(f"Matches kept: {round(len(games)/(len(games)+dropped)*100,1)}%")
     return games_copy
 
 
@@ -255,7 +265,31 @@ def get_correlations():
     print(f"STD of negative correlations: {np.std([x for x in l.values() if x <= 0])}")
     print(f"Standard deviation: {np.std(list(l.values()))}")
 
+def matrix_completion():
+    df = pd.read_csv("../data/combined_full.csv")
+    df = df.iloc[:,5:]
 
-combined_full = combine_data_full()
-combined_full.drop(labels=[])
-combined_full.to_csv("../data/combined_full.csv", na_rep='NULL', index=False)
+    imp = IterativeImputer(max_iter=1, random_state=0)
+    result = imp.fit_transform(df)
+    print(result)
+
+
+def simple_imputation():
+    df = pd.read_csv("../data/combined_full.csv", index_col=False)
+    df_copy = df.iloc[:, 5:].copy(deep=True)
+    imp = SimpleImputer(strategy="most_frequent")
+    result = imp.fit_transform(df_copy)
+    result = np.round(result)
+    df.iloc[:,5:] = result
+    return df
+
+#matrix_completion()
+#result = simple_imputation().iloc[:,3:]
+#result.to_csv("../data/combined_full_mostfrequent_imp.csv", index=False)
+
+
+combined_full = combine_data_full(npth=0)
+combined_full.drop(labels='home_lineup', inplace=True, axis=1)
+combined_full.drop(labels='away_lineup', inplace=True, axis=1)
+combined_full = combined_full.iloc[:,3:]
+combined_full.to_csv(f"../data/combined_th{0}.csv", na_rep='NULL', index=False)
