@@ -97,16 +97,11 @@ def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player
         games = games.reset_index(drop=True)
     players = pd.read_csv(p)
     pk = players.keys()[4:-16].values
-
-
-
     p_found = set()
     p_not_found = set()
     n_games = len(games)
     dropped = 0
-
     games_copy = games.copy(deep=True)
-    #new_columns = {}
     for team in ["H", "A"]:
         for player in range(1, 12):
             for attribute in pk:
@@ -125,8 +120,6 @@ def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player
             hplayer = get_player(hp, players)
             if len(hplayer) == 0:
                 p_not_found.add(hp)
-                #for key in pk:
-                 #   games_copy[f"{key}H{j}"].append(np.nan)
             else:
                 hp_att = hplayer[pk].values[0]
                 p_found.add(hp)
@@ -136,8 +129,6 @@ def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player
             aplayer = get_player(ap, players)
             if len(aplayer) == 0:
                 p_not_found.add(ap)
-                #for key in pk:
-                 #   games_copy[f"{key}A{j}"].append(np.nan)
             else:
                 ap_att = aplayer[pk].values[0]
                 p_found.add(ap)
@@ -148,10 +139,12 @@ def combine_data_full(g=data_path + "game_data_ascii.csv", p=data_path + "player
             games_copy = games_copy.drop(index=i)
             dropped += 1
 
-    #for key in new_columns.keys():
-     #   games_copy[key] = new_columns[key]
+
 
     games_copy = games_copy.reset_index(drop=True)
+    games_copy.drop(labels='home_lineup', inplace=True, axis=1)
+    games_copy.drop(labels='away_lineup', inplace=True, axis=1)
+    games_copy = games_copy.iloc[:, 3:]
     print(f"\nPlayers found: {len(p_found)}")
     print(f"Players not found: {len(p_not_found)}")
     print(f"Percentage players found: {round(len(p_found)/(len(p_found)+len(p_not_found))*100,1)}%")
@@ -274,22 +267,13 @@ def matrix_completion():
     print(result)
 
 
-def simple_imputation():
-    df = pd.read_csv("../data/combined_full.csv", index_col=False)
-    df_copy = df.iloc[:, 5:].copy(deep=True)
-    imp = SimpleImputer(strategy="most_frequent")
+def simple_imputation(df, method="mean"):
+    df_copy = df.iloc[:, 3:].copy(deep=True)
+    imp = SimpleImputer(strategy=method)
     result = imp.fit_transform(df_copy)
     result = np.round(result)
-    df.iloc[:,5:] = result
+    df.iloc[:,3:] = result
     return df
 
-#matrix_completion()
-#result = simple_imputation().iloc[:,3:]
-#result.to_csv("../data/combined_full_mostfrequent_imp.csv", index=False)
 
 
-combined_full = combine_data_full(npth=0)
-combined_full.drop(labels='home_lineup', inplace=True, axis=1)
-combined_full.drop(labels='away_lineup', inplace=True, axis=1)
-combined_full = combined_full.iloc[:,3:]
-combined_full.to_csv(f"../data/combined_th{0}.csv", na_rep='NULL', index=False)
